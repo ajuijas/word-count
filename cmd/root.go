@@ -6,6 +6,9 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 )
@@ -17,8 +20,11 @@ var (
 	charectorFlag bool
 )
 
+
 func readFile(fileName string) (int, int, int) {
-	var lines, words, charectors int
+	var (
+	lines, words, charectors int
+)
 	data, _ := os.ReadFile(fileName)
 	if len(data) != 0 {
 		lines += 1
@@ -36,21 +42,34 @@ func readFile(fileName string) (int, int, int) {
 	return lines, words, charectors
 }
 
-func printResultLine(fileName string) {
-	lines, wrods, charectors := readFile(fileName)
+func formatIntRightAligned(num int, width int) string {
+	var tem string
+	strNum := strconv.Itoa(num)
+	padding := width - len(strNum)
+	if padding > 0 {
+		tem = strings.Repeat(" ", padding) + strNum + " "
+		return string(tem)
+	}
+	return strNum + " "
+}
+
+func printResultLine(fileName string, wg *sync.WaitGroup) {
+	lines, words, charectors := readFile(fileName)
+	var result string
 	if !lineFlag && !wordFlag && !charectorFlag {
 		lineFlag, wordFlag, charectorFlag = true, true, true
 	}
 	if lineFlag {
-		fmt.Printf("%8d ", lines)
+		result += formatIntRightAligned(lines, 8)
 	}
 	if wordFlag {
-		fmt.Printf("%8d ", wrods)
+		result += formatIntRightAligned(words, 8)
 	}
 	if charectorFlag {
-		fmt.Printf("%8d ", charectors)
+		result += formatIntRightAligned(charectors, 8)
 	}
-	fmt.Print(fileName)
+	fmt.Print(result, fileName, "\n")
+	defer wg.Done()
 }
 
 // rootCmd represents the base command when called without any subcommands
@@ -73,10 +92,12 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
+		var wg sync.WaitGroup
 		for _, fileName := range args {
-			printResultLine(fileName)
-			
+			wg.Add(1)
+			go printResultLine(fileName,  &wg)
 		}
+		wg.Wait()
 	},
 }
 
