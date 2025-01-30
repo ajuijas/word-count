@@ -51,6 +51,7 @@ func readFromInput(resultChan chan result){
 		line := scanner.Text()
 		countLine(line, &res)
 	}
+	fmt.Println()
 	resultChan <- res
 }
 
@@ -62,7 +63,12 @@ func readFromFile(fileName string, resultChan chan result, wg *sync.WaitGroup){
 
 	res.filename = fileName
 
-	file, _ := os.Open(fileName)
+	file, err := os.Open(fileName)
+	if err != nil {
+		res.err = err
+		resultChan <- res
+		return
+	}
 	defer file.Close()
 
 	reader := bufio.NewReaderSize(file, fileBufferSize)
@@ -83,6 +89,19 @@ func readFromFile(fileName string, resultChan chan result, wg *sync.WaitGroup){
 
 }
 
+func printError(resu result) {
+	if os.IsNotExist(resu.err) {
+		fmt.Printf("./wc: '%s': open: No such file or directory\n", resu.filename)
+	} else if os.IsPermission(resu.err) {
+		fmt.Printf("./wc: '%s': open: Permission denied\n", resu.filename)
+	} else if strings.Contains(resu.err.Error(), "is a directory") {
+		fmt.Printf("./wc: '%s': read: Is a directory", resu.filename)
+	} else {
+		fmt.Printf("./wc: '%s': error: Unhandled error", resu.filename)
+	}
+	fmt.Println()
+}
+
 func printResult(resu result){
 	if !lineFlag && !wordFlag &&!charectorFlag {
 		// All flags are set to true, while no flags are present in the command
@@ -92,7 +111,8 @@ func printResult(resu result){
 	}
 
 	if resu.err != nil {
-		fmt.Print(resu.err)
+		printError(resu)
+		return
 	}
 	if lineFlag{fmt.Printf("%8d ", resu.lineCount)}
 	if wordFlag{fmt.Printf("%8d ", resu.wordCount)}
