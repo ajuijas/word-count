@@ -107,9 +107,7 @@ func printError(resu result) {
 func printResult(resu result){
 	if !lineFlag && !wordFlag &&!charectorFlag {
 		// All flags are set to true, while no flags are present in the command
-		lineFlag = true
-		wordFlag = true
-		charectorFlag = true
+		fmt.Printf("%8d %8d %8d ", resu.lineCount, resu.wordCount, resu.charCount)
 	}
 
 	if resu.err != nil {
@@ -134,7 +132,7 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	Run: func(cmd *cobra.Command, args []string) { 
+	Run: func(cmd *cobra.Command, args []string) {
 		resultChan := make(chan result, maxOpenFileCount)
 		if len(args) == 0 {
 			readFromInput(os.Stdin, resultChan)
