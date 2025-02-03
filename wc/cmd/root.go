@@ -6,6 +6,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -30,7 +31,7 @@ type result struct {
 	err       error
 }
 
-func countLine(line string, res *result) {
+func count(line string, res *result) {
 
 	res.lineCount++
 
@@ -38,18 +39,19 @@ func countLine(line string, res *result) {
 	words := strings.Fields(line) // Fields splits the line by whitespace
 	res.wordCount += len(words)
 
-	// Use len(line) for total character count (including spaces, newlines, etc.)
-	res.charCount += len(line)
+	for _, word := range words{
+		res.charCount += len(word)
+	}
 }
 
-func readFromInput(resultChan chan result){
+func readFromInput(reader io.Reader, resultChan chan result){
 
 	var res result
-	scanner := bufio.NewScanner(os.Stdin)
+	scanner := bufio.NewScanner(reader)
 
 	for scanner.Scan(){
 		line := scanner.Text()
-		countLine(line, &res)
+		count(line, &res)
 	}
 	fmt.Println()
 	resultChan <- res
@@ -76,13 +78,13 @@ func readFromFile(fileName string, resultChan chan result, wg *sync.WaitGroup){
 	for {
 		// Read a line from the file
 		line, err := reader.ReadString('\n')
+		count(line, &res)
 		if err != nil {
 			if err.Error() != "EOF" {
 				res.err = err
 			}
 			break // End of file
 		}
-		countLine(line, &res)
 	}
 	
 	resultChan <- res
@@ -135,8 +137,9 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) { 
 		resultChan := make(chan result, maxOpenFileCount)
 		if len(args) == 0 {
-			readFromInput(resultChan)
-		}else{
+			readFromInput(os.Stdin, resultChan)
+			// os.Stdin passing here to make it easy to write test cases for the 'feadFromInput' func
+		} else {
 			var wg sync.WaitGroup
 			for _, fileName := range args {
 				// Read the content from file
